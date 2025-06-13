@@ -1,16 +1,22 @@
 # Work Task for Rivan
 Dev / build / test setup: 
 * Ubuntu 24.04 (in WSL)
-* With qemu-user aarch64 emulation per this guide: https://azeria-labs.com/arm-on-x86-qemu-user/
+* ~~With qemu-user aarch64 emulation per this guide: https://azeria-labs.com/arm-on-x86-qemu-user/~~
 
 # TODO
-[ ] Do house keeping stuff - organise dirs, etc. 
-[ ] Setup GH repo
-[ ] Get SIMPLE_RT running and/or building - maybe via qemu user mode emulation? See this guide: https://azeria-labs.com/arm-on-x86-qemu-user/. Doesn't work right now - hopefully can get an x86 binary or try with full system emulation (slow...)
-[ ] Play with it - where is its data going? 
-[ ] Set up build system - get to hello_world for CMD.
-[ ] Do everything else
-[ ] Profit
+- [x] Do house keeping stuff - organise dirs, etc. 
+- [x] Setup GH repo
+- [x] Get SIMPLE_RT running and/or building - maybe via qemu user mode emulation? See this guide: https://azeria-labs.com/arm-on-x86-qemu-user/. Doesn't work right now - hopefully can get an x86 binary or try with full system emulation (slow...). Update - got x86 binary, will go ahead with that. 
+- [ ] Play with it - where is its data going? 
+- [x] Set up build system - get to hello_world for CMD.
+- [ ] Build CMD
+    - [ ] ...
+- [ ] Build XCP_CMD
+    - [ ] ...
+- [ ] Build XCP_DAQ
+    - [ ] ...
+- [ ] ???
+- [ ] Profit
 
 # Requirements Spec
 We will have 4 executables running simultaneously
