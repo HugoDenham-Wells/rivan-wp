@@ -14,10 +14,10 @@ BINARIES := $(patsubst %, $(BUILD_DIR)/%, $(APPS))
 # Default target: build all
 all: $(BINARIES)
 
-# Build rule for each app
-$(BUILD_DIR)/%: %/main.c
+# Pattern rule to build each app
+$(BUILD_DIR)/%: 
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -DAPP_NAME=\""$*"\" $< -o $@
+	$(CC) $(CFLAGS) -I$* $$(find $* -name '*.c') -o $@ -DAPP_NAME=\""$*"\" 
 
 # Clean target
 clean:

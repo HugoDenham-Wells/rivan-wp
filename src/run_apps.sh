@@ -9,8 +9,7 @@ for APP in "${APPS[@]}"; do
     BIN="$BUILD_DIR/$APP"
     if [[ -x "$BIN" ]]; then
         echo "=== Running $APP ==="
-        ("$BIN")
-        echo
+        ("$BIN"&) # Run in background
     else
         echo "!! Skipping $APP: $BIN not found or not executable"
     fi

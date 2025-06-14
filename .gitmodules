@@ -1,0 +1,3 @@
+[submodule "XCPlite"]
+	path = XCPlite
+	url = https://github.com/vectorgrp/XCPlite
