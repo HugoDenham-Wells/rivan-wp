@@ -1,19 +1,24 @@
 // Persistent session state interface
 #ifndef STATE_H
 #define STATE_H
-#include <stdint.h>
-#include <stddef.h>
 
-// Holds configuration/state of XCP_CMD session
-// TODO - what should actually be in here? Need more details on XCP
+#include <stddef.h>
+#include <stdint.h>
+
+#define MAX_XCP_PACKETS 16
+#define MAX_PACKET_SIZE 256
+
 typedef struct
 {
-    int session_active;
-    uint8_t last_config[256];
-    size_t config_size;
+    uint8_t packets[MAX_XCP_PACKETS][MAX_PACKET_SIZE];
+    size_t packet_lengths[MAX_XCP_PACKETS];
+    int packet_count;
+    int daq_started; // flag for whether the DAQ has been started
 } XcpSessionState;
 
-int load_state(XcpSessionState *state);
-void save_state(const XcpSessionState *state);
+int load_xcp_state(XcpSessionState *state);
+void save_xcp_state(const XcpSessionState *state);
+void add_xcp_packet(XcpSessionState *state, const uint8_t *data, size_t len);
+void reset_xcp_state(XcpSessionState *state);
 
 #endif
