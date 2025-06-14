@@ -25,6 +25,7 @@ typedef struct
 } SocketHandles;
 
 static volatile int keep_running = 1;
+XcpSessionState session_state;
 
 void handle_sigint(int sig)
 {
@@ -221,13 +222,49 @@ static void main_loop(SocketHandles *sockets)
                 continue;
             }
             printf("Connected to RT_EXE.\n");
+
+            // If we have saved packets, send them to RT_EXE. Should reestablish the DAQ state.
+            for (int i = 0; i < session_state.packet_count; ++i)
+            {
+                send(sockets->rt_exe_fd,
+                     session_state.packets[i],
+                     session_state.packet_lengths[i],
+                     0);
+                printf("Sent saved packet %ld bytes to RT_EXE.\n", session_state.packet_lengths[i]);
+            }
         }
 
         fd_set readfds;
         FD_ZERO(&readfds);
-        FD_SET(sockets->rt_exe_fd, &readfds);
-        FD_SET(sockets->client_server_fd, &readfds);
-        int maxfd = (sockets->rt_exe_fd > sockets->client_server_fd) ? sockets->rt_exe_fd : sockets->client_server_fd;
+
+        // Add all valid sockets to the listening set
+        if (sockets->rt_exe_fd >= 0)
+        {
+            FD_SET(sockets->rt_exe_fd, &readfds);
+        }
+        if (sockets->xcp_cmd_fd >= 0)
+        {
+            FD_SET(sockets->xcp_cmd_fd, &readfds);
+        }
+        if (sockets->xcp_daq_fd >= 0)
+        {
+            FD_SET(sockets->xcp_daq_fd, &readfds);
+        }
+        if (sockets->client_server_fd >= 0)
+        {
+            FD_SET(sockets->client_server_fd, &readfds);
+        }
+
+        // Determine the maximum file descriptor for select TODO this seems yuck, but it works. Is there a better way?
+        int maxfd = -1;
+        if (sockets->rt_exe_fd > maxfd)
+            maxfd = sockets->rt_exe_fd;
+        if (sockets->client_server_fd > maxfd)
+            maxfd = sockets->client_server_fd;
+        if (sockets->xcp_cmd_fd > maxfd)
+            maxfd = sockets->xcp_cmd_fd;
+        if (sockets->xcp_daq_fd > maxfd)
+            maxfd = sockets->xcp_daq_fd;
         struct timeval tv = {.tv_sec = 1, .tv_usec = 0};
 
         int ret = select(maxfd + 1, &readfds, NULL, NULL, &tv);
@@ -254,6 +291,43 @@ static void main_loop(SocketHandles *sockets)
             if (handle_rt_exe(sockets) < 0)
                 continue;
         }
+        if (FD_ISSET(sockets->xcp_cmd_fd, &readfds))
+        {
+            // Handle incoming XCP_CMD messages
+            uint8_t buffer[256];
+            int len = recv(sockets->xcp_cmd_fd, buffer, sizeof(buffer), 0);
+            if (len == 0)
+            {
+                printf("XCP_CMD closed connection.\n");
+                close(sockets->xcp_cmd_fd);
+                sockets->xcp_cmd_fd = -1;
+            }
+            else if (len < 0)
+            {
+                perror("recv from XCP_CMD");
+                close(sockets->xcp_cmd_fd);
+                sockets->xcp_cmd_fd = -1;
+            }
+            else
+            {
+                // TODO: There is a bug here, if XCP_CMD floods us with packets,
+                // we will have an ever-growing list of XCP packets in session_state.
+                // Unclear what the right solution is - throw away old packets? Add a
+                // reset / command header to each XCP packet?
+                add_xcp_packet(&session_state, buffer, len); // Save received packet
+
+                if (send(sockets->rt_exe_fd, buffer, len, 0) != len) // Forward to RT_EXE
+                {
+                    // TODO there is a failure mode here when a setup is interrupted mid-send,
+                    // we could put the RT_EXE in an unknown state.
+                    perror("send to RT_EXE failed");
+                }
+                else
+                {
+                    printf("Forwarded %d bytes to RT_EXE:", len);
+                }
+            }
+        }
     }
 }
 
@@ -261,10 +335,9 @@ int main(void)
 {
     signal(SIGINT, handle_sigint);
 
-    XcpSessionState session_state;
-    if (load_state(&session_state) < 0)
+    if (load_xcp_state(&session_state) < 0)
     {
-        fprintf(stderr, "Failed to load session state, starting fresh.\n");
+        fprintf(stderr, "Failed to load xcp session state, starting fresh.\n");
         memset(&session_state, 0, sizeof(session_state));
     }
     else
