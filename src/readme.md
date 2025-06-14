@@ -29,10 +29,8 @@ We will have 4 executables running simultaneously
 1. Manages the connection to the RT_EXE via TCP port 17725 (hard coded), robust to 
 connection loss or restart of RT_EXE 
 2. Retains setup state of XCP_CMD setup in case of RT_EXE or CMD restart 
-3. Transparently sends XCP_CMD packets to the RT_EXE and returns the response to 
-
-## XCP_CMD 
-1. Pushes all DAQ packets to the XCP_DAQ process 
+3. Transparently sends XCP_CMD packets to the RT_EXE and returns the response to XCP_CMD 
+4. Pushes all DAQ packets to the XCP_DAQ process 
  
 ## XCP_CMD 
 1. Sets up the DAQ list of the on the RT_EXE to stream the “measurements” 
