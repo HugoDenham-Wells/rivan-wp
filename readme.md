@@ -1,7 +1,6 @@
 # Work Task for Rivan
 Dev / build / test setup: 
 * Ubuntu 24.04 (in WSL)
-* ~~With qemu-user aarch64 emulation per this guide: https://azeria-labs.com/arm-on-x86-qemu-user/~~
 
 # TODO
 - [x] Do house keeping stuff - organise dirs, etc. 
@@ -63,11 +62,12 @@ xcpExtModeRunBackground: xcpTransportRx error, code -14
 * Could do with some doc, linting, static analysis, and *definitely* unit tests for critical stuff
 * If this is going to live for a while I would make it more modular - shared headers / modules / defines for maintainability.
 ## Fault Handling:
-We handle:
+### We handle:
 * RT_SIMPLE restarts (although CMD just hangs around waiting for it, so it does leave the clients unattended to)
 * CMD restarts - XCP_CMD commands are cached and are re-sent to RT_SIMPLE on restart. But it does rely on an initial execution of XCP_CMD.
 * XCP_DAQ restarts, CMD will cache data destined for XCP_DAQ until it reconnects. 
-We don't handle:
+
+### We don't handle:
 * XCP_CMD DAQ setup being interrupted mid-stream
 * XCP_CMD stored state being corrupted
 * Fault conditions lie: XCP_CMD flooding us with data
