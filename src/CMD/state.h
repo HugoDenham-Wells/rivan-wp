@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MAX_XCP_PACKETS 16
+#define MAX_XCP_PACKETS 256
 #define MAX_PACKET_SIZE 256
 
 typedef struct
@@ -13,12 +13,11 @@ typedef struct
     uint8_t packets[MAX_XCP_PACKETS][MAX_PACKET_SIZE];
     size_t packet_lengths[MAX_XCP_PACKETS];
     int packet_count;
-    int daq_started; // flag for whether the DAQ has been started
 } XcpSessionState;
 
-int load_xcp_state(XcpSessionState *state);
-void save_xcp_state(const XcpSessionState *state);
-void add_xcp_packet(XcpSessionState *state, const uint8_t *data, size_t len);
-void reset_xcp_state(XcpSessionState *state);
+int load_xcp_state(XcpSessionState *state, const char *filename);
+void save_xcp_state(const XcpSessionState *state, const char *filename);
+void add_xcp_packet(XcpSessionState *state, const uint8_t *data, size_t len, const char *filename);
+void reset_xcp_state(XcpSessionState *state, const char *filename);
 
 #endif

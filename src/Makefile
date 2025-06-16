@@ -6,7 +6,11 @@ BUILD_DIR := build
 
 # Compiler and flags
 CC := gcc
-CFLAGS := -Wall -O2
+CFLAGS := -Wall -O2 -Icommon -g
+
+# Find all .c files in common directory
+COMMON_SRCS := $(shell find common -name '*.c')
+
 
 # Define output binaries
 BINARIES := $(patsubst %, $(BUILD_DIR)/%, $(APPS))
@@ -17,7 +21,7 @@ all: $(BINARIES)
 # Pattern rule to build each app
 $(BUILD_DIR)/%: 
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -I$* $$(find $* -name '*.c') -o $@ -DAPP_NAME=\""$*"\" 
+	$(CC) $(CFLAGS) -I$* $$(find $* -name '*.c') $(COMMON_SRCS) -o $@ -DAPP_NAME=\""$*"\" 
 
 # Clean target
 clean:

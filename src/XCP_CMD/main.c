@@ -3,61 +3,18 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <errno.h>
 
-#define HOST "127.0.0.1"
-#define PORT 17726
-#define RETRY_DELAY_SEC 1
-
-void send_packet(int sock, const uint8_t *data, size_t len)
-{
-    send(sock, data, len, 0);
-    printf("Sent: ");
-    for (size_t i = 0; i < len; i++)
-        printf("%02X ", data[i]);
-    printf("\n");
-    usleep(50000); // brief pause between packets
-}
-
-int connect_with_retry(const char *host, int port)
-{
-    int sock;
-    struct sockaddr_in addr = {.sin_family = AF_INET, .sin_port = htons(port)};
-    inet_pton(AF_INET, host, &addr.sin_addr);
-
-    while (1)
-    {
-        sock = socket(AF_INET, SOCK_STREAM, 0);
-        if (sock < 0)
-        {
-            perror("socket");
-            sleep(RETRY_DELAY_SEC);
-            continue;
-        }
-
-        if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0)
-        {
-            return sock;
-        }
-
-        perror("connect");
-        close(sock);
-        sleep(RETRY_DELAY_SEC);
-    }
-}
+#include "networking.h"
 
 int main()
 {
-    int sock = connect_with_retry(HOST, PORT);
-    printf("Connected to CMD at %s:%d\n", HOST, PORT);
-
-    // Optional identification if CMD expects it
-    send(sock, "XCP_CMD", 7, 0);
+    int sock = connect_with_retry(CMD_ADDR, CMD_PORT, "XCP_CMD");
+    printf("Connected to CMD at %s:%d\n", CMD_ADDR, CMD_PORT);
 
     // DAQ setup for SIMPLE_RT_Y.Q_1 and Q_2 (8-byte floats at known addresses)
+
+    // TODO - sending this data does not set up the DAQ properly, we need to
+    // fix something... but what?
 
     // Set DAQ pointer for entry 0 (Q_1)
     uint8_t set_daq_ptr_q1[] = {0xB2, 0x00, 0x00, 0x00}; // list 0, odt 0, entry 0
@@ -83,6 +40,9 @@ int main()
     uint8_t start_daq[] = {0xC0, 0x01}; // mode=1 = start all
     send_packet(sock, start_daq, sizeof(start_daq));
 
+    // TODO - we should probably wait for a response from the CMD before proceeding.
+    // For now, we assume the setup is successful and proceed. In a real application,
+    // we would handle the response and any errors accordingly.
     printf("DAQ setup complete.\n");
 
     close(sock);

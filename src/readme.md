@@ -57,9 +57,12 @@ With 2 weeks I would need to better understand the use and context of the apps i
 We handle:
 * RT_SIMPLE restarts (although CMD just hangs around waiting for it, so it does leave the clients unattended to)
 * CMD restarts - XCP_CMD commands are cached and are re-sent to RT_SIMPLE on restart. But it does rely on an initial execution of XCP_CMD.
+
 We don't handle:
 * XCP_CMD DAQ setup being interrupted mid-stream
 * XCP_CMD stored state being corrupted
 * Fault conditions lie: XCP_CMD flooding us with data
 * Any sort of security concerns
 * Any OS-level auto-restart stuff (e.g. daemons)
+* XCP_CMD sending DAQ setup packets while CMD is disconnected from SIMPLE_RT - need to make connection to SIMPLE_RT non-blocking to implement this. 
+* There is a limit on caching of DAQ packets if XCP_DAQ is offline. Because XCP_DAQ and XCP_CMD share the same caching code there is a balance here between caching excessive CMD packets and missing DAQ data. Could decouple these or have a method to reset caching. 
