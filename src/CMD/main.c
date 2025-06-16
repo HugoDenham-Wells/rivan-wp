@@ -217,7 +217,26 @@ static int handle_rt_exe(SocketHandles *sockets)
     }
     else
     {
-        printf("Received non-DAQ packet from RT_EXE, ignoring.\n");
+        // Must be a CMD packet - shoot it off to XCP_CMD
+        // TODO - are all non-DAQ packets CMD packets?
+        if (sockets->xcp_cmd_fd < 0)
+        {
+            // TODO - what should we do for orphaned / unexpected / unsolicited packets?
+            printf("XCP_CMD socket is not connected, discarding packet.\n");
+
+            return -1;
+        }
+        else
+        {
+            if (send(sockets->xcp_cmd_fd, buf, n, 0) != n)
+            {
+                perror("send to XCP_CMD failed");
+                close(sockets->xcp_cmd_fd);
+                sockets->xcp_cmd_fd = -1;
+                return -1;
+            }
+            printf("Forwarded %zd bytes to XCP_CMD.\n", n);
+        }
     }
     return 0;
 }
@@ -245,7 +264,7 @@ static void handle_xcp_cmd(SocketHandles *sockets)
         // TODO: There is a bug here, if XCP_CMD runs a few times / repeatedly we
         // will hit cached packet limit and no longer be able to change DAQ setup state
         // Unclear what the right solution is - throw away old packets? Add a
-        // reset / command header to each XCP packet?
+        // reset / command header to each XCP_CMD packet?
         add_xcp_packet(&xcp_cmd_state, buffer, len, XCP_CMD_CACHE_FILE); // Save received packet
 
         if (send(sockets->rt_exe_fd, buffer, len, 0) != len) // Forward to RT_EXE
@@ -265,7 +284,7 @@ static void main_loop(SocketHandles *sockets)
 {
     while (keep_running)
     {
-        // Connect to RT_EXE if needed
+        // Connect to RT_EXE if needed - blocks on this.
         if (sockets->rt_exe_fd < 0)
         {
             printf("Connecting to RT_EXE at %s:%d...\n", RT_EXE_ADDR, RT_EXE_PORT);
@@ -281,6 +300,7 @@ static void main_loop(SocketHandles *sockets)
             }
         }
 
+        // Set up FD polling for our sockets
         struct pollfd pfds[4];
         int nfds = 0;
 
@@ -339,7 +359,8 @@ static void main_loop(SocketHandles *sockets)
         if (sockets->rt_exe_fd >= 0 && pfds[pfd_index].revents & POLLIN)
         {
             if (handle_rt_exe(sockets) < 0)
-                continue; // If RT_EXE connection was closed, skip further processing
+                continue; // If RT_EXE connection was closed, skip further
+                          // processing and go back and wait for RT_EXE connection.
         }
         if (sockets->rt_exe_fd >= 0)
             pfd_index++;
@@ -374,12 +395,22 @@ int main(void)
 
     if (load_xcp_state(&xcp_cmd_state, XCP_CMD_CACHE_FILE) < 0)
     {
-        fprintf(stderr, "Failed to load xcp session state, starting fresh.\n");
+        fprintf(stderr, "Failed to load XCP_CMD session state, starting fresh.\n");
         memset(&xcp_cmd_state, 0, sizeof(xcp_cmd_state));
     }
     else
     {
         printf("Loaded XCP_CMD state successfully.\n");
+    }
+
+    if (load_xcp_state(&xcp_daq_state, XCP_DAQ_CACHE_FILE) < 0)
+    {
+        fprintf(stderr, "No cached XCP_DAQ packets, starting fresh.\n");
+        memset(&xcp_daq_state, 0, sizeof(xcp_daq_state));
+    }
+    else
+    {
+        printf("Loaded XCP_DAQ state successfully.\n");
     }
 
     SocketHandles sockets = {-1, -1, -1, -1};
