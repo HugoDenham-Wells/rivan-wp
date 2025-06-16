@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <poll.h>
 
 #include "networking.h"
 
@@ -30,7 +31,7 @@ void save_data_to_file(const uint8_t *data, size_t len)
 
 void decode_xcp_packet(const uint8_t *data, size_t len)
 {
-    // This function should decode the XCP packet according to the XCP protocol.
+    // TODO This function should decode the XCP packet according to the XCP protocol.
     // For now, we will just print the raw data in hex format.
     printf("XCP Packet: ");
     for (size_t i = 0; i < len; i++)
@@ -56,30 +57,51 @@ int main(void)
             cmd_fd = connect_with_retry(CMD_ADDR, CMD_PORT, "XCP_DAQ");
             continue;
         }
-        printf("Connected to CMD at %s:%d\n", CMD_ADDR, CMD_PORT);
 
-        // Wait for data from CMD
-        uint8_t buffer[256];
-        size_t n = recv(cmd_fd, buffer, sizeof(buffer), 0);
+        struct pollfd pfd;
+        pfd.fd = cmd_fd;
+        pfd.events = POLLIN;
 
-        if (n < 0)
+        int ret = poll(&pfd, 1, 1000); // Wait indefinitely for data
+        if (ret < 0)
         {
-            perror("recv");
+            perror("poll");
             close(cmd_fd);
             cmd_fd = -1;
             continue; // Retry connection
         }
-        else if (n == 0)
+        else if (ret == 0)
         {
-            printf("CMD connection closed by peer.\n");
-            close(cmd_fd);
-            cmd_fd = -1;
-            continue; // Retry connection
+            printf("Timeout waiting for data.\n");
+            continue; // Timeout, just retry
         }
 
-        // Process the received data
-        // decode_xcp_packet(buffer, n);
-        // printf("Received %zd bytes from CMD\n", n);
+        if (pfd.revents & POLLIN)
+        {
+
+            // Wait for data from CMD
+            uint8_t buffer[256];
+            ssize_t n = recv(cmd_fd, buffer, sizeof(buffer), 0);
+
+            if (n < 0)
+            {
+                perror("recv");
+                close(cmd_fd);
+                cmd_fd = -1;
+                continue; // Retry connection
+            }
+            else if (n == 0)
+            {
+                printf("CMD connection closed by peer.\n");
+                close(cmd_fd);
+                cmd_fd = -1;
+                continue; // Retry connection
+            }
+
+            // Process the received data
+            decode_xcp_packet(buffer, n);
+            printf("Received %zd bytes from CMD\n", n);
+        }
     }
 
     return 0;
