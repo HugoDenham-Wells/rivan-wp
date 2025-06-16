@@ -6,19 +6,25 @@ BUILD_DIR := build
 
 # Compiler and flags
 CC := gcc
-CFLAGS := -Wall -O2
+CFLAGS := -Wall -O2 -Icommon -g
 
-# Define output binaries
-BINARIES := $(patsubst %, $(BUILD_DIR)/%, $(APPS))
+# Find all .c files in common directory
+COMMON_SRCS := $(shell find common -name '*.c')
 
-# Default target: build all
-all: $(BINARIES)
+# Default target
+all: $(patsubst %, $(BUILD_DIR)/%, $(APPS))
 
-# Pattern rule to build each app
+# Per-app rules
 $(BUILD_DIR)/%: 
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -I$* $$(find $* -name '*.c') -o $@ -DAPP_NAME=\""$*"\" 
+	SRCS="$$(find $* -name '*.c')"; \
+	$(CC) $(CFLAGS) -I$* $$SRCS $(COMMON_SRCS) -o $@ -DAPP_NAME=\""$*"\" 
 
-# Clean target
+# Add explicit dependencies for each app
+$(foreach app,$(APPS),$(eval $(BUILD_DIR)/$(app): $(shell find $(app) -name '*.c') $(COMMON_SRCS)))
+
+# Clean
 clean:
 	rm -rf $(BUILD_DIR)
+
+.PHONY: all clean
